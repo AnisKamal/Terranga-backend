@@ -21,3 +21,10 @@ spring:
 
 server:
   port: 8099
+
+api:
+  api-football:
+    base-url: https://v3.football.api-sports.io/
+    header:
+      key: x-apisports-key
+      value: 8d9aab264ad0499f3243f6e1050e94a1
