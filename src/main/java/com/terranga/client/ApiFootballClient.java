@@ -10,13 +10,14 @@ public class ApiFootballClient {
 
     private final  RestClient restClient;
 
+
     public ApiFootballClient( @Qualifier("apiFootballRestClient") RestClient restClient) {
         this.restClient = restClient;
     }
 
-    public FixturesApiFootballResponse getMatch(){
+    public FixturesApiFootballResponse getMatch(String idTeam){
         return restClient.get()
-                .uri("/fixtures?team=13&season=2022")
+                .uri("/fixtures?team="+idTeam+"&season=2022")
                 .retrieve()
                 .body(FixturesApiFootballResponse.class);
     }

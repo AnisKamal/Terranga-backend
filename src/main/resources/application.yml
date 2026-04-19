@@ -28,3 +28,5 @@ api:
     header:
       key: x-apisports-key
       value: 8d9aab264ad0499f3243f6e1050e94a1
+    id:
+      Senegal-team: 13
