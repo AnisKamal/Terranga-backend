@@ -1,6 +1,7 @@
 package com.terranga.service;
 
 import com.terranga.client.ApiFootballClient;
+import com.terranga.common.DateUtilities;
 import com.terranga.dto.FixturesApiFootballResponse;
 import com.terranga.dto.MatchsResponse;
 import com.terranga.entities.MatchEntity;
@@ -28,8 +29,12 @@ public class FixturesService {
 
     public List<MatchsResponse>  getFixturesApiFootballResponse() {
         FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal);
+
+
+
         //todo : calculer le current year pour l'ajouter à lapi
         List<MatchsResponse> matchsResponse = mapper.mapFixtureListToMatchList(matchs.response());
+
 
 
         return matchsResponse;
@@ -40,6 +45,8 @@ public class FixturesService {
         FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal);
 
         List<MatchEntity> matchEntities = mapper.mapFixtureListToMatchEntityList(matchs.response());
+
+
 
         this.syncFixtures(matchEntities);
     }

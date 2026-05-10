@@ -1,10 +1,12 @@
 package com.terranga.mapper;
 
+import com.terranga.common.DateUtilities;
 import com.terranga.dto.FixturesApiFootballResponse;
 import com.terranga.dto.MatchsResponse;
 import com.terranga.entities.MatchEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
 
 import java.util.List;
@@ -14,7 +16,7 @@ public interface MatchMapper {
 
     MatchMapper INSTANCE = Mappers.getMapper(MatchMapper.class);
 
-    @Mapping(source = "fixture.timestamp", target = "date")
+    @Mapping(source = "fixture.date", target = "date",qualifiedByName = "formatDate")
     @Mapping(source = "teams.home.name", target = "homeName")
     @Mapping(source = "teams.home.logo", target = "homeLogo")
     @Mapping(source = "teams.away.name", target = "awayName")
@@ -27,7 +29,7 @@ public interface MatchMapper {
     @Mapping(source = "teams.home.logo", target = "homeLogo")
     @Mapping(source = "teams.away.name", target = "awayName")
     @Mapping(source = "teams.away.logo", target = "awayLogo")
-    @Mapping(source = "fixture.date", target = "date")
+    @Mapping(source = "fixture.date", target = "date", qualifiedByName = "formatDate")
     @Mapping(source = "fixture.timestamp", target = "timestamp")
     @Mapping(source = "fixture.id", target = "idFixture")
     @Mapping(source = "fixture.referee", target = "referee")
@@ -35,4 +37,10 @@ public interface MatchMapper {
 
     List<MatchEntity> mapFixtureListToMatchEntityList( List<FixturesApiFootballResponse.FixtureData> fixtureData);
 
+    List<MatchsResponse> mapFixtureToDtoMatchList(List<FixturesApiFootballResponse.FixtureData> fixtureDataList);
+
+    @Named("formatDate")
+    default String formatDate(String date) {
+        return DateUtilities.formaDateFromApiFootball(date);
+    }
 }
