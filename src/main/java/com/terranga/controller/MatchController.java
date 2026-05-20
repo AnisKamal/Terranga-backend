@@ -20,6 +20,6 @@ public class MatchController {
 
     @GetMapping
     public List<MatchsResponse> getFixtureData() {
-        return fixturesService.getFixturesApiFootballResponse();
+        return fixturesService.getAllMatches();
     }
 }

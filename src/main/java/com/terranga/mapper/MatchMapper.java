@@ -37,7 +37,15 @@ public interface MatchMapper {
 
     List<MatchEntity> mapFixtureListToMatchEntityList( List<FixturesApiFootballResponse.FixtureData> fixtureData);
 
-    List<MatchsResponse> mapFixtureToDtoMatchList(List<FixturesApiFootballResponse.FixtureData> fixtureDataList);
+    @Mapping(source = "date", target = "date")
+    @Mapping(source = "homeName", target = "homeName")
+    @Mapping(source = "homeLogo", target = "homeLogo")
+    @Mapping(source = "awayName", target = "awayName")
+    @Mapping(source = "awayLogo", target = "awayLogo")
+    MatchsResponse mapEntityToDtoMatch(MatchEntity matchEntity);
+
+    List<MatchsResponse> mapEntitiesListToMatchList(List<MatchEntity>matchEntities);
+
 
     @Named("formatDate")
     default String formatDate(String date) {

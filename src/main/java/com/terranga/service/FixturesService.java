@@ -9,6 +9,10 @@ import com.terranga.mapper.MatchMapper;
 import com.terranga.repositories.MatchRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,40 +23,32 @@ import java.util.List;
 public class FixturesService {
 
     private final ApiFootballClient apiFootballClient;
-
     private final MatchMapper mapper;
-
     private final MatchRepository matchRepository;
+    private final CacheManager cacheManager;
 
     @Value("${api.api-football.id.senegal-team}")
     private String idTeamSenegal;
 
-    public List<MatchsResponse>  getFixturesApiFootballResponse() {
-        FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal);
-
-
-
-        //todo : calculer le current year pour l'ajouter à lapi
-        List<MatchsResponse> matchsResponse = mapper.mapFixtureListToMatchList(matchs.response());
-
-
-
-        return matchsResponse;
+    @Cacheable(value = "matches", key = "'all'")
+    public List<MatchsResponse> getAllMatches() {
+        return matchRepository.findAll()
+                .stream()
+                .map(mapper::mapEntityToDtoMatch)
+                .toList();
     }
 
     @Transactional
     public void  UpdateMatch(){
+        //todo : calculer le current year pour l'ajouter à lapi
         FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal);
-
         List<MatchEntity> matchEntities = mapper.mapFixtureListToMatchEntityList(matchs.response());
-
-
-
+        List<MatchsResponse> matchsResponseToCache = mapper.mapFixtureListToMatchList(matchs.response());
+        this.saveIntoCache(matchsResponseToCache);
         this.syncFixtures(matchEntities);
     }
 
-
-    public void syncFixtures(List<MatchEntity> matches) {
+    private  void syncFixtures(List<MatchEntity> matches) {
         matches.forEach(m ->
                 matchRepository.upsert(
                         m.getIdFixture(),
@@ -66,4 +62,14 @@ public class FixturesService {
                 )
         );
     }
+
+    private void saveIntoCache(List<MatchsResponse> matchsResponse){
+        Cache cache = cacheManager.getCache("matches");
+        if (cache != null) {
+            cache.clear();
+            cache.put("all", matchsResponse);
+        }
+    }
+
+
 }
