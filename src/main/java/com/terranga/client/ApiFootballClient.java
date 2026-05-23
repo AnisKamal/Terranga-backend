@@ -2,6 +2,8 @@ package com.terranga.client;
 
 import com.terranga.dto.FixtureEventsResponse;
 import com.terranga.dto.FixturesApiFootballResponse;
+import com.terranga.dto.PlayerDetailsApiResponse;
+import com.terranga.dto.SquadApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -40,6 +42,45 @@ public class ApiFootballClient {
         } catch (RestClientException e) {
             log.error("Échec de l'appel API-Football (team={}, season={}) : {}", idTeam, season, e.getMessage());
             return new FixturesApiFootballResponse(List.of());
+        }
+    }
+
+    public SquadApiResponse getSquad(int teamId) {
+        try {
+            SquadApiResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/players/squads")
+                            .queryParam("team", teamId)
+                            .build())
+                    .retrieve()
+                    .body(SquadApiResponse.class);
+            if (response == null || response.response() == null) {
+                log.warn("Réponse API-Football /players/squads vide (team={})", teamId);
+                return new SquadApiResponse(List.of());
+            }
+            return response;
+        } catch (RestClientException e) {
+            log.error("Échec de l'appel API-Football /players/squads (team={}) : {}", teamId, e.getMessage());
+            return new SquadApiResponse(List.of());
+        }
+    }
+
+    public PlayerDetailsApiResponse getPlayerDetails(long playerId, int season) {
+        try {
+            PlayerDetailsApiResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/players")
+                            .queryParam("id", playerId)
+                            .queryParam("season", season)
+                            .build())
+                    .retrieve()
+                    .body(PlayerDetailsApiResponse.class);
+            if (response == null || response.response() == null) {
+                log.warn("Réponse API-Football /players vide (player={}, season={})", playerId, season);
+                return new PlayerDetailsApiResponse(List.of());
+            }
+            return response;
+        } catch (RestClientException e) {
+            log.error("Échec de l'appel API-Football /players (player={}, season={}) : {}", playerId, season, e.getMessage());
+            return new PlayerDetailsApiResponse(List.of());
         }
     }
 
