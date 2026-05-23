@@ -30,6 +30,9 @@ public class FixturesService {
     @Value("${api.api-football.id.senegal-team}")
     private String idTeamSenegal;
 
+    @Value("${api.api-football.season:}")
+    private String configuredSeason;
+
     @Cacheable(value = "matches", key = "'all'")
     public List<MatchsResponse> getAllMatches() {
         return matchRepository.findAll()
@@ -39,9 +42,16 @@ public class FixturesService {
     }
 
     @Transactional
-    public void  UpdateMatch(){
-        //todo : calculer le current year pour l'ajouter à lapi
-        FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal);
+    public void UpdateMatch() {
+        // Vider le cache EN PREMIER : élimine les données stales (ancien format de sérialisation, etc.)
+        // getAllMatches() tombera sur la DB si l'API échoue, ce qui est correct.
+        evictCache();
+
+        int season = resolveSeason();
+        FixturesApiFootballResponse matchs = apiFootballClient.getMatch(idTeamSenegal, season);
+        if (matchs.response() == null || matchs.response().isEmpty()) {
+            return;
+        }
         List<MatchEntity> matchEntities = mapper.mapFixtureListToMatchEntityList(matchs.response());
         List<MatchsResponse> matchsResponseToCache = mapper.mapFixtureListToMatchList(matchs.response());
         this.saveIntoCache(matchsResponseToCache);
@@ -63,12 +73,25 @@ public class FixturesService {
         );
     }
 
-    private void saveIntoCache(List<MatchsResponse> matchsResponse){
+    private void evictCache() {
         Cache cache = cacheManager.getCache("matches");
         if (cache != null) {
             cache.clear();
+        }
+    }
+
+    private void saveIntoCache(List<MatchsResponse> matchsResponse) {
+        Cache cache = cacheManager.getCache("matches");
+        if (cache != null) {
             cache.put("all", matchsResponse);
         }
+    }
+
+    private int resolveSeason() {
+        if (configuredSeason != null && !configuredSeason.isBlank()) {
+            return Integer.parseInt(configuredSeason.trim());
+        }
+        return DateUtilities.currentSeason();
     }
 
 

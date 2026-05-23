@@ -38,6 +38,8 @@ api:
     base-url: https://v3.football.api-sports.io/
     header:
       key: x-apisports-key
-      value: 8d9aab264ad0499f3243f6e1050e94a1
+      value: ${API_FOOTBALL_KEY:8d9aab264ad0499f3243f6e1050e94a1}
     id:
-      Senegal-team: 13
+      senegal-team: 13
+    # Laisser vide pour calculer la saison courante automatiquement
+    season: ${API_FOOTBALL_SEASON:2022}
