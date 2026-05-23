@@ -29,4 +29,24 @@ public class MatchEntity extends BaseEntity{
 
     private String awayLogo;
 
+    private Integer homeGoals;
+
+    private Integer awayGoals;
+
+    private String statusShort;
+
+    private Long homeTeamId;
+
+    private Long awayTeamId;
+
+    /** Liste des buteurs de l'équipe domicile, séparés par virgule. Null tant que pas synchronisé via /fixtures/events. */
+    @Column(length = 1000)
+    private String homeScorers;
+
+    @Column(length = 1000)
+    private String awayScorers;
+
+    /** Nom de la compétition (ex: "Africa Cup of Nations") ou "Match amical" pour les Friendlies. */
+    private String competition;
+
 }

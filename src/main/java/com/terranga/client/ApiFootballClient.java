@@ -1,5 +1,6 @@
 package com.terranga.client;
 
+import com.terranga.dto.FixtureEventsResponse;
 import com.terranga.dto.FixturesApiFootballResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,5 +43,23 @@ public class ApiFootballClient {
         }
     }
 
+    public FixtureEventsResponse getEvents(long fixtureId) {
+        try {
+            FixtureEventsResponse response = restClient.get()
+                    .uri(uriBuilder -> uriBuilder.path("/fixtures/events")
+                            .queryParam("fixture", fixtureId)
+                            .build())
+                    .retrieve()
+                    .body(FixtureEventsResponse.class);
+            if (response == null || response.response() == null) {
+                log.warn("Réponse API-Football /events vide (fixture={})", fixtureId);
+                return new FixtureEventsResponse(List.of());
+            }
+            return response;
+        } catch (RestClientException e) {
+            log.error("Échec de l'appel API-Football /events (fixture={}) : {}", fixtureId, e.getMessage());
+            return new FixtureEventsResponse(List.of());
+        }
+    }
 
 }

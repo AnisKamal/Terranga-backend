@@ -42,4 +42,4 @@ api:
     id:
       senegal-team: 13
     # Laisser vide pour calculer la saison courante automatiquement
-    season: ${API_FOOTBALL_SEASON:2022}
+    season: ${API_FOOTBALL_SEASON:}

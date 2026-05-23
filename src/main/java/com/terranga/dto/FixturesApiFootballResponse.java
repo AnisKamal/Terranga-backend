@@ -6,14 +6,18 @@ import java.util.List;
 
 public record FixturesApiFootballResponse(List<FixtureData> response) {
 
-    public record FixtureData(Fixture fixture, Teams teams, Status status) {}
+    public record FixtureData(Fixture fixture, League league, Teams teams, Goals goals) {}
 
-    public record Status(@JsonProperty("long") String long_, @JsonProperty("short")String short_ ,String elapsed, String extra ){}
+    public record Fixture(String date, Long id, String referee, Long timestamp, Status status) {}
 
-    public record Fixture(String date, Long id, String referee, Long timestamp) {}
+    public record Status(@JsonProperty("long") String long_, @JsonProperty("short") String short_, Integer elapsed, String extra) {}
+
+    public record League(Long id, String name, String country, String logo, String flag, Integer season, String round, String type) {}
 
     public record Teams(Team home, Team away) {}
 
-    public record Team(String name, String logo) {}
+    public record Team(Long id, String name, String logo) {}
+
+    public record Goals(Integer home, Integer away) {}
 
 }
