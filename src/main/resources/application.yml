@@ -1,24 +1,3 @@
-#spring:
-#  application:
-#    name: terranga
-#  datasource:
-#    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH
-#    driver-class-name: org.h2.Driver
-#    username: sa
-#    password:
-#  jpa:
-#    hibernate:
-#      ddl-auto: create-drop
-#    show-sql: true
-#    properties:
-#      hibernate:
-#        format_sql: false
-#        dialect: org.hibernate.dialect.H2Dialect
-#
-#  h2:
-#    console:
-#      enabled: true
-#      path: /h2-console
 spring:
   application:
     name: Terranga-connect
@@ -28,7 +7,7 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
@@ -64,6 +43,11 @@ api:
     # Match dans le titre uniquement (qInTitle) avec variantes Sénégal
     query: "(senegal OR sénégal OR sénégalais OR sénégalaise OR senegalais OR teranga OR téranga)"
     language: fr
+
+firebase:
+  # Nom du fichier service-account JSON dans src/main/resources/
+  # Le fichier est gitignoré — chaque dev/env doit fournir le sien
+  service-account-file: ${FIREBASE_SERVICE_ACCOUNT_FILE:firebase-service-account.json}
 
 logging:
   level:

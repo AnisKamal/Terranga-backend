@@ -55,4 +55,24 @@ public interface MatchRepository extends JpaRepository<MatchEntity, Long> {
 
     Optional<MatchEntity> findByIdFixture(Long idFixture);
 
+    /**
+     * Matchs candidats à recevoir au moins une notification planifiée :
+     * timestamp dans la fenêtre [lowerTs, upperTs] ET au moins un flag de notif encore false.
+     */
+    /**
+     * NB : on traite NULL comme "pas envoyé" via COALESCE pour gérer les lignes
+     * pré-existantes à l'ajout des colonnes (migration).
+     */
+    @Query(value = """
+        SELECT * FROM t_match
+        WHERE timestamp BETWEEN :lowerTs AND :upperTs
+          AND (COALESCE(morning_notif_sent, false)   = false
+            OR COALESCE(pre_match_notif_sent, false) = false
+            OR COALESCE(post_match_notif_sent, false) = false)
+        ORDER BY timestamp ASC
+        """, nativeQuery = true)
+    List<MatchEntity> findNotificationCandidates(
+            @Param("lowerTs") long lowerTs,
+            @Param("upperTs") long upperTs);
+
 }

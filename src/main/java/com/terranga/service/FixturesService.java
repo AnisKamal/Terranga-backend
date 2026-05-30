@@ -7,14 +7,18 @@ import com.terranga.dto.FixturesApiFootballResponse;
 import com.terranga.dto.MatchesViewResponse;
 import com.terranga.dto.MatchsResponse;
 import com.terranga.entities.MatchEntity;
+import com.terranga.events.NewMatchInsertedEvent;
 import com.terranga.mapper.MatchMapper;
 import com.terranga.repositories.MatchRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,10 +32,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class FixturesService {
 
+    private static final Logger log = LoggerFactory.getLogger(FixturesService.class);
+
     private final ApiFootballClient apiFootballClient;
     private final MatchMapper mapper;
     private final MatchRepository matchRepository;
     private final CacheManager cacheManager;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Value("${api.api-football.id.senegal-team}")
     private String idTeamSenegal;
@@ -148,6 +155,13 @@ public class FixturesService {
     }
 
     private void syncFixtures(List<MatchEntity> matches) {
+        long countBefore = matchRepository.count();
+        long nowTs = System.currentTimeMillis() / 1000;
+        boolean isFirstSync = (countBefore == 0);
+        if (isFirstSync) {
+            log.info("Première sync (DB vide) — notifications nouveau match désactivées pour ce batch");
+        }
+
         matches.forEach(m ->
                 matchRepository.findByIdFixture(m.getIdFixture())
                         .ifPresentOrElse(
@@ -167,7 +181,21 @@ public class FixturesService {
                                     existing.setCompetition(m.getCompetition());
                                     matchRepository.save(existing);
                                 },
-                                () -> matchRepository.save(m)
+                                () -> {
+                                    MatchEntity saved = matchRepository.save(m);
+                                    // Notif seulement si : pas 1er sync ET match futur (timestamp >= maintenant)
+                                    if (!isFirstSync
+                                            && saved.getTimestamp() != null
+                                            && saved.getTimestamp() >= nowTs) {
+                                        eventPublisher.publishEvent(new NewMatchInsertedEvent(
+                                                saved.getIdFixture(),
+                                                saved.getHomeName(),
+                                                saved.getAwayName(),
+                                                saved.getDate(),
+                                                saved.getTimestamp()
+                                        ));
+                                    }
+                                }
                         )
         );
     }
