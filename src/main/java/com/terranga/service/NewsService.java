@@ -7,6 +7,8 @@ import com.terranga.repositories.NewsArticleRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,7 @@ public class NewsService {
     private final NewsArticleRepository repository;
 
     @Transactional
+    @CacheEvict(value = "news-list", allEntries = true)
     public void syncArticles() {
         log.info("=== Début sync actualités Google News ===");
         List<GoogleNewsClient.NewsRawItem> items = googleNewsClient.fetchSenegalFootballNews();
@@ -63,6 +66,7 @@ public class NewsService {
         log.info("=== Fin sync actualités : {} articles en DB ===", total);
     }
 
+    @Cacheable(value = "news-list", key = "'all'")
     public List<NewsArticleResponse> getAllArticles() {
         return repository.findAllOrderedByPublishedDesc().stream()
                 .map(this::toDto)

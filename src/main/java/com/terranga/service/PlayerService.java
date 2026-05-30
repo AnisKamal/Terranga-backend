@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +37,7 @@ public class PlayerService {
     private Integer idTeamSenegal;
 
     @Transactional
+    @CacheEvict(value = "players-list", allEntries = true)
     public void syncSquad() {
         log.info("=== Début sync squad pour team={} ===", idTeamSenegal);
         SquadApiResponse squad = apiFootballClient.getSquad(idTeamSenegal);
@@ -77,6 +80,7 @@ public class PlayerService {
         log.info("=== Fin sync squad : {} joueurs en DB ===", total);
     }
 
+    @Cacheable(value = "players-list", key = "'all'")
     public List<PlayerResponse> getAllPlayers() {
         return playerRepository.findAll().stream()
                 .map(mapper::mapEntityToDto)

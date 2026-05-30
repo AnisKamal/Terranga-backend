@@ -1,5 +1,8 @@
 package com.terranga.config;
 
+import com.terranga.dto.MatchesViewResponse;
+import com.terranga.dto.NewsArticleResponse;
+import com.terranga.dto.PlayerResponse;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -7,61 +10,69 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializationContext.SerializationPair;
 import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
-import tools.jackson.databind.DefaultTyping;
+import tools.jackson.databind.JavaType;
 import tools.jackson.databind.json.JsonMapper;
-import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import tools.jackson.databind.type.TypeFactory;
 
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Cache Redis avec sérialiseurs typés par cache.
+ *
+ * Pourquoi cette approche ?
+ *  - {@link JacksonJsonRedisSerializer} prend une Class/JavaType au constructeur
+ *  - Pas de polymorphic typing nécessaire → pas besoin de @class dans le JSON
+ *  - Les records Java (final) fonctionnent sans modification
+ *
+ * Chaque @Cacheable est lié à un cache logique, qui a son propre serializer
+ * typé sur la valeur de retour exacte de la méthode cachée.
+ */
 @Configuration
 @EnableCaching
 public class RedisConfig {
 
     @Bean
-    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory factory) {
-        RedisTemplate<String, Object> template = new RedisTemplate<>();
-        template.setConnectionFactory(factory);
-
-        RedisSerializer<Object> serializer = buildSerializer();
-
-        template.setValueSerializer(serializer);
-        template.setKeySerializer(new StringRedisSerializer());
-        template.setHashKeySerializer(new StringRedisSerializer());
-        template.setHashValueSerializer(serializer);
-        template.afterPropertiesSet();
-        return template;
-    }
-
-    @Bean
     public CacheManager cacheManager(RedisConnectionFactory factory) {
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(buildSerializer()));
+        // TypeFactory partagé pour construire les types génériques (List<X>)
+        TypeFactory typeFactory = JsonMapper.builder().build().getTypeFactory();
+
+        JavaType listOfPlayer = typeFactory.constructCollectionType(List.class, PlayerResponse.class);
+        JavaType listOfNews = typeFactory.constructCollectionType(List.class, NewsArticleResponse.class);
+
+        Map<String, RedisCacheConfiguration> perCache = Map.of(
+                "matches-view", cacheConfig(
+                        new JacksonJsonRedisSerializer<>(MatchesViewResponse.class),
+                        Duration.ofMinutes(5)),
+                "players-list", cacheConfig(
+                        new JacksonJsonRedisSerializer<>(listOfPlayer),
+                        Duration.ofHours(1)),
+                "news-list", cacheConfig(
+                        new JacksonJsonRedisSerializer<>(listOfNews),
+                        Duration.ofMinutes(15))
+        );
+
+        // Défaut conservateur si on oublie de déclarer un cache plus tard (TTL 10 min, valeurs String)
+        RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(Duration.ofMinutes(10))
+                .serializeKeysWith(SerializationPair.fromSerializer(RedisSerializer.string()));
 
         return RedisCacheManager.builder(factory)
-                .cacheDefaults(config)
+                .cacheDefaults(defaultConfig)
+                .withInitialCacheConfigurations(perCache)
                 .build();
     }
 
-    private static GenericJacksonJsonRedisSerializer buildSerializer() {
-        // Spring Data Redis 4 + Jackson 3 (tools.jackson).
-        // GenericJacksonJsonRedisSerializer utilise ARRAY comme format de type-id par défaut,
-        // ce qui provoque un AsArrayTypeDeserializer crash sur List<record>.
-        // On configure PROPERTY (@class) : type-id stocké comme champ JSON, plus robuste.
-        JsonMapper om = JsonMapper.builder()
-                .activateDefaultTypingAsProperty(
-                        BasicPolymorphicTypeValidator.builder()
-                                .allowIfSubType(Object.class)
-                                .build(),
-                        DefaultTyping.NON_FINAL,
-                        "@class"
-                )
-                .build();
-        return new GenericJacksonJsonRedisSerializer(om);
+    /** Construit une config Redis par cache avec un sérialiseur de valeur dédié. */
+    private static RedisCacheConfiguration cacheConfig(
+            RedisSerializer<?> valueSerializer, Duration ttl) {
+        return RedisCacheConfiguration.defaultCacheConfig()
+                .entryTtl(ttl)
+                .serializeKeysWith(SerializationPair.fromSerializer(RedisSerializer.string()))
+                .serializeValuesWith(SerializationPair.fromSerializer(valueSerializer));
     }
 }

@@ -14,8 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
@@ -37,7 +35,6 @@ public class FixturesService {
     private final ApiFootballClient apiFootballClient;
     private final MatchMapper mapper;
     private final MatchRepository matchRepository;
-    private final CacheManager cacheManager;
     private final ApplicationEventPublisher eventPublisher;
 
     @Value("${api.api-football.id.senegal-team}")
@@ -46,20 +43,13 @@ public class FixturesService {
     @Value("${api.api-football.season:}")
     private String configuredSeason;
 
-    @Cacheable(value = "matches", key = "'all'")
-    public List<MatchsResponse> getAllMatches() {
-        return matchRepository.findAll()
-                .stream()
-                .map(mapper::mapEntityToDtoMatch)
-                .toList();
-    }
-
     public Optional<MatchsResponse> getNextMatch() {
         long nowTimestamp = System.currentTimeMillis() / 1000;
         return matchRepository.findNextMatch(nowTimestamp)
                 .map(mapper::mapEntityToDtoMatch);
     }
 
+    @Cacheable(value = "matches-view", key = "'main'")
     public MatchesViewResponse getMatchesView() {
         long now = System.currentTimeMillis() / 1000;
         MatchsResponse next = matchRepository.findNextMatch(now)
@@ -75,10 +65,8 @@ public class FixturesService {
     }
 
     @Transactional
+    @CacheEvict(value = "matches-view", allEntries = true)
     public void UpdateMatch() {
-        // Vider le cache EN PREMIER : élimine les données stales (ancien format de sérialisation, etc.)
-        evictCache();
-
         int season = resolveSeason();
         int currentYear = LocalDate.now().getYear();
 
@@ -108,8 +96,6 @@ public class FixturesService {
                 .toList();
 
         List<MatchEntity> matchEntities = mapper.mapFixtureListToMatchEntityList(deduplicated);
-        List<MatchsResponse> matchsResponseToCache = mapper.mapFixtureListToMatchList(deduplicated);
-        this.saveIntoCache(matchsResponseToCache);
         this.syncFixtures(matchEntities);
 
         // Enrichir les 2 derniers matchs terminés avec les noms des buteurs (1 appel API par match).
@@ -198,20 +184,6 @@ public class FixturesService {
                                 }
                         )
         );
-    }
-
-    private void evictCache() {
-        Cache cache = cacheManager.getCache("matches");
-        if (cache != null) {
-            cache.clear();
-        }
-    }
-
-    private void saveIntoCache(List<MatchsResponse> matchsResponse) {
-        Cache cache = cacheManager.getCache("matches");
-        if (cache != null) {
-            cache.put("all", matchsResponse);
-        }
     }
 
     private int resolveSeason() {
