@@ -1,8 +1,8 @@
 spring:
   application:
-    name: Terranga-connect
+    name: terranga_connect
   datasource:
-    url: jdbc:postgresql://localhost:5432/Terranga-connect
+    url: jdbc:postgresql://localhost:5432/terranga_connect
     username: postgres
     password: postgres
   jpa:
